@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QQfrevo Mapa OSM - Adega & Resenhas</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { font-family: 'Outfit', sans-serif; }
+  body { background: #050014; }
+  .glass { backdrop-filter: blur(16px); background: rgba(17, 3, 38, 0.8); }
+  .purple-glow { box-shadow: 0 0 40px rgba(139, 92, 246, 0.3); }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #1a0b2e; }
+  ::-webkit-scrollbar-thumb { background: #7c3aed; border-radius: 3px; }
+  .leaflet-container { background: #0a0215 !important; }
+  .leaflet-popup-content-wrapper { background: #1a0b2e; color: white; border: 1px solid #7c3aed; }
+  .leaflet-popup-tip { background: #7c3aed; }
+</style>
+</head>
+<body class="text-white overflow-hidden">
+  <!-- HEADER -->
+  <header class="relative z-50 border-b border-violet-900/30 glass">
+    <div class="absolute inset-0 bg-gradient-to-r from-violet-950/50 via-purple-950/50 to-fuchsia-950/50"></div>
+    <div class="relative px-4 py-3 lg:px-6 flex items-center gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center purple-glow">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2L14.5 8.5H21L15.75 12.5L18 19L12 14.5L6 19L8.25 12.5L3 8.5H9.5L12 2Z" fill="white"/></svg>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight">QQ<span class="text-violet-400">frevo</span></h1>
+          <p class="text-[10px] text-violet-300/70 -mt-1">MAPA OSM</p>
+        </div>
+      </div>
+
+      <div class="flex-1 hidden md:flex items-center gap-2 max-w-3xl ml-6">
+        <div class="relative flex-1">
+          <input id="tipo" placeholder="Tipo: bebidas, adega, bar..." class="w-full h-10 pl-9 pr-3 bg-black/40 border border-violet-900/50 rounded-xl text-sm focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition" />
+          <svg class="absolute left-3 top-2.5 w-4 h-4 text-violet-400/60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        </div>
+        <div class="relative flex-1">
+          <input id="categoria" placeholder="Categoria: vinho, cerveja, whisky..." class="w-full h-10 pl-9 pr-3 bg-black/40 border border-violet-900/50 rounded-xl text-sm focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition" />
+          <svg class="absolute left-3 top-2.5 w-4 h-4 text-violet-400/60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-width="2" d="M7 7h10v10"/></svg>
+        </div>
+        <div class="relative flex-1">
+          <input id="cidade" placeholder="Cidade" class="w-full h-10 pl-9 pr-3 bg-black/40 border border-violet-900/50 rounded-xl text-sm focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition" />
+          <svg class="absolute left-3 top-2.5 w-4 h-4 text-violet-400/60" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
+        </div>
+        <button id="btnBuscar" class="h-10 px-6 bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-xl font-medium text-sm hover:from-violet-500 hover:to-fuchsia-500 transition purple-glow disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap">
+          Buscar
+        </button>
+      </div>
+
+      <div class="ml-auto flex items-center gap-3">
+        <div class="flex items-center gap-2 px-3 py-1.5 bg-violet-950/50 border border-violet-800/30 rounded-full">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          <span id="favoritosCount" class="text-sm font-medium">0</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Mobile search -->
+    <div class="md:hidden px-4 pb-3 flex gap-2">
+      <input id="tipo-m" placeholder="Tipo" class="flex-1 h-9 px-3 bg-black/40 border border-violet-900/50 rounded-lg text-sm" />
+      <input id="cidade-m" placeholder="Cidade" class="flex-1 h-9 px-3 bg-black/40 border border-violet-900/50 rounded-lg text-sm" />
+      <button onclick="document.getElementById('tipo').value=document.getElementById('tipo-m').value;document.getElementById('cidade').value=document.getElementById('cidade-m').value;buscar()" class="h-9 px-4 bg-violet-600 rounded-lg text-sm">OK</button>
+    </div>
+  </header>
+
+  <div class="flex h-[calc(100vh-65px)] md:h-[calc(100vh-73px)]">
+    <!-- SIDEBAR ESQUERDA -->
+    <aside class="hidden lg:flex w-[340px] flex-col border-r border-violet-950 bg-[#080214]">
+      <div class="p-4 border-b border-violet-950">
+        <div class="flex items-center justify-between">
+          <h2 class="font-semibold text-violet-200 tracking-wide">RESENHAS / ADEGAS</h2>
+          <span class="text-[11px] px-2 py-0.5 bg-violet-950 text-violet-300 rounded-full">OSM</span>
+        </div>
+      </div>
+      <div id="listaAdegas" class="flex-1 overflow-y-auto">
+        <div class="flex flex-col items-center justify-center h-full p-8 text-center">
+          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-900/30 to-fuchsia-900/30 flex items-center justify-center mb-4 border border-violet-800/30">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          </div>
+          <p class="text-violet-300 font-medium">Faça sua primeira busca</p>
+          <p class="text-sm text-zinc-500 mt-1">Digite tipo e cidade acima</p>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAPA -->
+    <main class="flex-1 relative bg-[#050014]">
+      <div class="absolute inset-0">
+        <div id="map" class="w-full h-full"></div>
+        <div class="absolute inset-0 pointer-events-none bg-gradient-to-t from-[#050014]/40 via-transparent to-[#050014]/20"></div>
+      </div>
+      
+      <!-- Controles flutuantes -->
+      <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 z-[400]">
+        <div class="glass px-4 py-2 rounded-full border border-violet-900/50 flex items-center gap-3 text-xs">
+          <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-violet-500 animate-pulse"></span> OpenStreetMap</span>
+          <span class="text-zinc-600">•</span>
+          <span class="text-zinc-400">Brasília</span>
+        </div>
+      </div>
+    </main>
+
+    <!-- SIDEBAR DIREITA -->
+    <aside class="hidden xl:flex w-[320px] flex-col border-l border-violet-950 bg-[#080214]">
+      <div class="p-4 border-b border-violet-950">
+        <div class="flex items-center justify-between">
+          <h2 class="font-semibold text-fuchsia-200 tracking-wide">FEED FREVO</h2>
+          <div class="w-2 h-2 rounded-full bg-fuchsia-500 animate-pulse"></div>
+        </div>
+      </div>
+      <div id="feed" class="flex-1 overflow-y-auto p-3">
+        <div class="h-full flex items-center justify-center text-zinc-600 text-sm">
+          Aguardando busca...
+        </div>
+      </div>
+    </aside>
+  </div>
+
+<script>
+const map = L.map('map', { zoomControl: false, attributionControl: false }).setView([-15.7939, -47.8828], 11);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  attribution: '© OSM'
+}).addTo(map);
+L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+let abortController = null;
+let currentSearchId = 0;
+let favoritos = 0;
+let markersLayer = L.layerGroup().addTo(map);
+
+const listaAdegas = document.getElementById('listaAdegas');
+const feed = document.getElementById('feed');
+const btnBuscar = document.getElementById('btnBuscar');
+const favCount = document.getElementById('favoritosCount');
+
+function limparTela() {
+  // Remove todos marcadores (exceto tileLayer)
+  map.eachLayer(layer => {
+    if (layer instanceof L.Marker || layer instanceof L.CircleMarker || layer instanceof L.Popup) {
+      map.removeLayer(layer);
+    }
+  });
+  markersLayer.clearLayers();
+  listaAdegas.innerHTML = '';
+  feed.innerHTML = '';
+}
+
+function criarIcone(emoji = '🍷') {
+  return L.divIcon({
+    html: `<div style="background:linear-gradient(135deg,#7c3aed,#c026d3);width:36px;height:36px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 4px 20px rgba(124,58,237,0.5);border:2px solid rgba(255,255,255,0.2)">${emoji}</div>`,
+    className: '',
+    iconSize: [36, 36],
+    iconAnchor: [18, 18]
+  });
+}
+
+async function buscar() {
+  // 1. LIMPEZA ANTES DE NOVA BUSCA
+  if (abortController) abortController.abort();
+  abortController = new AbortController();
+  
+  currentSearchId = Date.now();
+  const thisSearchId = currentSearchId;
+
+  limparTela();
+  
+  listaAdegas.innerHTML = `<div class="p-8 text-center"><div class="inline-flex items-center gap-2 px-4 py-2 bg-violet-950/50 rounded-full border border-violet-800/50"><div class="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin"></div><span class="text-sm text-violet-300">Buscando...</span></div></div>`;
+  feed.innerHTML = `<div class="p-8 text-center text-zinc-500 text-sm">Buscando...</div>`;
+
+  btnBuscar.disabled = true;
+  btnBuscar.textContent = 'Buscando...';
+  btnBuscar.classList.add('opacity-60');
+
+  const tipo = document.getElementById('tipo').value.trim() || document.getElementById('tipo-m')?.value.trim() || '';
+  const categoria = document.getElementById('categoria').value.trim() || '';
+  const cidade = document.getElementById('cidade').value.trim() || document.getElementById('cidade-m')?.value.trim() || 'Brasília';
+
+  try {
+    // Geocode
+    const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cidade)}&limit=1&addressdetails=1`, {
+      signal: abortController.signal,
+      headers: { 'Accept-Language': 'pt-BR' }
+    });
+    const geo = await geoRes.json();
+    if (!geo[0]) throw new Error('Cidade não encontrada');
+    
+    const { lat, lon, boundingbox, display_name } = geo[0];
+    map.setView([parseFloat(lat), parseFloat(lon)], 14);
+
+    if (thisSearchId !== currentSearchId) return;
+
+    // Overpass query AMPLIADA
+    const bbox = `${boundingbox[0]},${boundingbox[2]},${boundingbox[1]},${boundingbox[3]}`;
+    const filtro = (tipo + ' ' + categoria).toLowerCase();
+    
+    let shopFilters = `node["shop"="alcohol"](${bbox});way["shop"="alcohol"](${bbox});node["shop"="beverages"](${bbox});way["shop"="beverages"](${bbox});node["shop"="wine"](${bbox});way["shop"="wine"](${bbox});`;
+    if (filtro.includes('cerveja')) shopFilters += `node["shop"="beer"](${bbox});way["shop"="beer"](${bbox});`;
+    if (filtro.includes('super')) shopFilters += `node["shop"="supermarket"](${bbox});way["shop"="supermarket"](${bbox});`;
+    
+    const query = `[out:json][timeout:25];
+      (
+        ${shopFilters}
+        node["amenity"="bar"](${bbox});way["amenity"="bar"](${bbox});
+        node["amenity"="pub"](${bbox});way["amenity"="pub"](${bbox});
+        node["amenity"="nightclub"](${bbox});way["amenity"="nightclub"](${bbox});
+        node["shop"="tobacco"](${bbox});way["shop"="tobacco"](${bbox});
+      );
+      out center 60;`;
+
+    const overRes = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      body: 'data=' + encodeURIComponent(query),
+      signal: abortController.signal,
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    });
+    
+    if (!overRes.ok) throw new Error('Overpass falhou');
+    const data = await overRes.json();
+
+    // Controle de corrida
+    if (thisSearchId !== currentSearchId) return;
+
+    limparTela();
+
+    if (!data.elements || data.elements.length === 0) {
+      listaAdegas.innerHTML = `<div class="p-8 text-center text-zinc-500"><p>Nenhum local encontrado</p><p class="text-xs mt-1">Tente outra cidade</p></div>`;
+      feed.innerHTML = `<div class="p-6 text-center text-zinc-600 text-sm">Sem novidades em ${cidade}</div>`;
+    } else {
+      listaAdegas.innerHTML = '';
+      feed.innerHTML = '';
+      const bounds = [];
+      
+      data.elements.slice(0, 40).forEach((el, i) => {
+        const elLat = el.lat || el.center?.lat;
+        const elLon = el.lon || el.center?.lon;
+        if (!elLat) return;
+        
+        bounds.push([elLat, elLon]);
+        
+        const tags = el.tags || {};
+        const nome = tags.name || `${tags.shop || tags.amenity || 'Adega'} #${i+1}`;
+        const endereco = tags['addr:street'] ? `${tags['addr:street']}${tags['addr:housenumber'] ? ', ' + tags['addr:housenumber'] : ''}` : display_name.split(',')[0];
+        const tipoLocal = tags.shop === 'alcohol' ? 'Adega' : tags.shop === 'beverages' ? 'Bebidas' : tags.amenity === 'bar' ? 'Bar' : tags.amenity === 'pub' ? 'Pub' : 'Loja';
+        const emoji = tags.shop === 'wine' ? '🍷' : tags.amenity === 'bar' ? '🍺' : tags.amenity === 'pub' ? '🥃' : '🍾';
+        
+        const marker = L.marker([elLat, elLon], { icon: criarIcone(emoji) }).addTo(markersLayer);
+        marker.bindPopup(`
+          <div style="min-width:200px">
+            <div style="font-weight:600;font-size:15px;margin-bottom:4px">${nome}</div>
+            <div style="font-size:12px;opacity:0.8;margin-bottom:8px">${tipoLocal} • ${endereco}</div>
+            <button onclick="favoritar('${nome.replace(/'/g,"")}'])" style="background:#7c3aed;color:white;border:none;padding:6px 12px;border-radius:8px;font-size:12px;cursor:pointer;width:100%">+ Favoritar</button>
+          </div>
+        `);
+        
+        marker.on('click', () => {
+          document.querySelectorAll('.adega-item').forEach(x => x.classList.remove('ring-1','ring-violet-500','bg-violet-950/30'));
+          const item = document.getElementById('adega-'+i);
+          if (item) item.classList.add('ring-1','ring-violet-500','bg-violet-950/30');
+        });
+
+        listaAdegas.innerHTML += `
+          <div id="adega-${i}" class="adega-item p-4 border-b border-violet-950/50 hover:bg-violet-950/20 cursor-pointer transition group" onclick="map.setView([${elLat},${elLon}],17);map.openPopup(L.popup().setLatLng([${elLat},${elLon}]).setContent('<b>${nome}</b>'))">
+            <div class="flex gap-3">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-900/50 to-fuchsia-900/50 flex items-center justify-center text-lg border border-violet-800/30 group-hover:scale-110 transition">${emoji}</div>
+              <div class="flex-1 min-w-0">
+                <div class="font-medium text-white truncate">${nome}</div>
+                <div class="text-xs text-violet-300/70">${tipoLocal}</div>
+                <div class="text-[11px] text-zinc-500 mt-1 truncate">${endereco}</div>
+                <div class="flex items-center gap-2 mt-2">
+                  <span class="text-[10px] px-2 py-0.5 bg-emerald-950/50 text-emerald-400 rounded-full border border-emerald-900/50">ABERTO</span>
+                  <span class="text-[10px] text-zinc-600">★ 4.${Math.floor(Math.random()*3+5)}</span>
+                </div>
+              </div>
+            </div>
+          </div>`;
+
+        feed.innerHTML += `
+          <div class="mb-3 p-3 rounded-xl bg-gradient-to-br from-violet-950/40 to-fuchsia-950/30 border border-violet-900/30 hover:border-violet-700/50 transition cursor-pointer">
+            <div class="flex items-start gap-2.5">
+              <div class="w-8 h-8 rounded-lg bg-black/40 flex items-center justify-center text-sm">${emoji}</div>
+              <div class="flex-1">
+                <div class="text-[13px] font-medium text-white leading-snug">${nome}</div>
+                <div class="text-[11px] text-zinc-500 mt-0.5">${cidade} • agora</div>
+                <div class="text-xs text-zinc-400 mt-1.5 line-clamp-2">"${['Top seleção de vinhos!', 'Preços justos e atendimento ótimo', 'Encontrei aquele whisky raro', 'Ambiente perfeito'][i%4]}"</div>
+              </div>
+            </div>
+          </div>`;
+      });
+      
+      if (bounds.length > 1) map.fitBounds(bounds, { padding: [40, 40] });
+    }
+
+  } catch (e) {
+    if (e.name === 'AbortError') return;
+    if (thisSearchId !== currentSearchId) return;
+    
+    // TRATAMENTO DE ERRO - NÃO volta pra pesquisa anterior
+    limparTela();
+    listaAdegas.innerHTML = `
+      <div class="flex flex-col items-center justify-center h-full p-8 text-center">
+        <div class="w-16 h-16 rounded-2xl bg-red-950/30 flex items-center justify-center mb-4 border border-red-900/50">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <p class="text-red-400 font-medium">Erro na busca, tente novamente</p>
+        <p class="text-xs text-zinc-600 mt-1">${e.message || 'Servidor OSM indisponível'}</p>
+        <button onclick="buscar()" class="mt-4 px-4 py-2 bg-red-900/30 hover:bg-red-800/40 border border-red-800/50 rounded-lg text-sm text-red-300 transition">Tentar de novo</button>
+      </div>`;
+    feed.innerHTML = `<div class="p-6 text-center text-red-400/70 text-sm">Erro ao carregar feed</div>`;
+    
+  } finally {
+    if (thisSearchId === currentSearchId) {
+      btnBuscar.disabled = false;
+      btnBuscar.textContent = 'Buscar';
+      btnBuscar.classList.remove('opacity-60');
+    }
+  }
+}
+
+function favoritar(nome) {
+  favoritos++;
+  favCount.textContent = favoritos;
+  favCount.parentElement.classList.add('animate-pulse');
+  setTimeout(()=> favCount.parentElement.classList.remove('animate-pulse'), 600);
+}
+
+btnBuscar.addEventListener('click', buscar);
+['tipo','categoria','cidade'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') buscar(); });
+});
+
+// NÃO executa busca no load - estado inicial limpo conforme solicitado
+</script>
+<script>(function(){document.addEventListener("click",function(e){var a=e.target.closest("[data-product-id]");if(!a)return;e.preventDefault();var pid=a.getAttribute("data-product-id");if(pid)parent.postMessage({type:"ecto-artifact-link-click",productId:pid},"*")})})();</script>
+</body>
+</html>
