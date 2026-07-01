@@ -17,6 +17,7 @@
       .main{flex:1;display:flex;flex-direction:column}
       #map{flex:1;border-radius:10px;overflow:hidden}
       .panel{background:rgba(255,255,255,0.03);padding:10px;border-radius:8px}
+      select, #details { user-select: none; -webkit-user-select: none; -moz-user-select: none; }
       .btn{background:var(--accent);color:white;padding:8px 10px;border-radius:8px;text-decoration:none}
       /* animações simples */
       .fade-in{animation:fadeIn .6s ease both}
@@ -27,7 +28,7 @@
     <header>
       <h1 style="margin:0;font-size:18px">QQFrevo</h1>
       <nav style="margin-left:12px;display:flex;gap:8px;align-items:center">
-        <a class="menu" href="qqfrevo.html">Enviar evento (POST)</a>
+        <span style="color:var(--accent);padding:6px 10px;border-radius:8px">Enviar evento (desativado)</span>
         <a class="menu" href="qqfrevo-list.html">Lista de eventos</a>
       </nav>
       <div style="margin-left:auto;display:flex;gap:8px">
@@ -37,7 +38,7 @@
 
     <div class="container">
       <div class="sidebar panel">
-        <h3 style="margin:0 0 8px 0">Resenhas</h3>
+        <h3 style="margin:0 0 8px 0">Créditos</h3>
         <div id="reviewsList"></div>
       </div>
 
@@ -59,20 +60,21 @@
       </div>
 
       <div class="sidebar panel">
-        <h3 style="margin:0 0 8px 0">Seletor</h3>
+        <h3 style="margin:0 0 8px 0">Buscar frevo</h3>
         <label style="display:block;font-size:13px">Cidade</label>
-        <select id="citySelect" style="width:100%;padding:8px;border-radius:8px;margin-top:6px"></select>
-        <label style="display:block;font-size:13px;margin-top:8px">Frevo / Evento</label>
-        <select id="frevoSelect" style="width:100%;padding:8px;border-radius:8px;margin-top:6px"></select>
-        <div id="details" style="margin-top:10px;font-size:14px">Selecione um marcador no mapa</div>
+        <input id="cityInput" type="text" value="Recife" style="width:100%;padding:8px;border-radius:8px;margin-top:6px;box-sizing:border-box" />
+        <label style="display:block;font-size:13px;margin-top:8px">Tipo de frevo</label>
+        <input id="typeInput" type="text" placeholder="Ex.: frevo tradicional" style="width:100%;padding:8px;border-radius:8px;margin-top:6px;box-sizing:border-box" />
+        <button id="btnBuscar" class="btn" style="margin-top:8px;width:100%">Buscar no mapa</button>
+        <div id="details" style="margin-top:10px;font-size:14px">Digite uma cidade e toque em buscar.</div>
       </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="data.js"></script>
     <script src="map.js"></script>
     <script src="feed.js"></script>
-    <script src="posts.js"></script>
     <script src="main.js"></script>
     <script src="search.js"></script>
     <script>

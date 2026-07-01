@@ -1,69 +1,98 @@
-/* search.js - lógica de busca Overpass (extraída do index original) */
-// Mantém compatibilidade com o design anterior: função buscar() e handlers
+/* search.js - busca frevo/eventos no mapa usando dados locais e OSM */
 let abortController = null;
-let currentSearchId = 0;
 let markersLayerGlobal = null;
 
-function criarIconeSearch(emoji = '🍷') {
+function criarIconeSearch(emoji = '🎶') {
   return L.divIcon({
     html: `<div style="background:linear-gradient(135deg,#7c3aed,#c026d3);width:36px;height:36px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 4px 20px rgba(124,58,237,0.5);border:2px solid rgba(255,255,255,0.2)">${emoji}</div>`,
     className: '', iconSize: [36,36], iconAnchor:[18,18]
   });
 }
 
-async function buscar() {
+function getCityMatch(cityName) {
+  const query = (cityName || '').toString().trim().toLowerCase();
+  if(!query) return window.APP_DATA.cities[0];
+  return window.APP_DATA.cities.find(c=>c.id===query || c.name.toLowerCase()===query || c.name.toLowerCase().includes(query)) || window.APP_DATA.cities[0];
+}
+
+async function buscar(options = {}) {
   if (!window.map) return;
   if (abortController) abortController.abort();
   abortController = new AbortController();
-  currentSearchId = Date.now();
-  const thisSearchId = currentSearchId;
 
-  const listaAdegas = document.getElementById('listaAdegas');
-  const feedEl = document.getElementById('feed');
   const btnBuscar = document.getElementById('btnBuscar');
+  const feedEl = document.getElementById('feed');
+  const detailsEl = document.getElementById('details');
+  const cityInput = document.getElementById('cityInput');
+  const typeInput = document.getElementById('typeInput');
+  const city = (options.city || cityInput?.value || '').trim();
+  const type = (options.type || typeInput?.value || '').trim().toLowerCase();
 
   if (btnBuscar) { btnBuscar.disabled = true; btnBuscar.textContent = 'Buscando...'; }
-  if (listaAdegas) listaAdegas.innerHTML = '<div class="p-8 text-center">Buscando...</div>';
-  if (feedEl) feedEl.innerHTML = '<div class="p-8 text-center">Buscando...</div>';
-
-  const tipo = (document.getElementById('tipo')?.value||'').trim();
-  const categoria = (document.getElementById('categoria')?.value||'').trim();
-  const cidade = (document.getElementById('cidade')?.value||'').trim() || 'Brasil';
+  if (feedEl) feedEl.innerHTML = '<div style="color:#ccc">Buscando resultados...</div>';
+  if (detailsEl) detailsEl.innerHTML = 'Buscando no mapa...';
 
   try{
-    const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cidade)}&limit=1` , { signal: abortController.signal});
-    const geo = await geoRes.json(); if (!geo[0]) throw new Error('Cidade não encontrada');
-    const { lat, lon, boundingbox, display_name } = geo[0];
-    window.map.setView([parseFloat(lat), parseFloat(lon)], 13);
-    if (thisSearchId !== currentSearchId) return;
+    const cityObj = getCityMatch(city);
+    let center = cityObj.center;
 
-    const bbox = `${boundingbox[0]},${boundingbox[2]},${boundingbox[1]},${boundingbox[3]}`;
-    let shopFilters = `node["shop"="alcohol"](${bbox});way["shop"="alcohol"](${bbox});node["shop"="beverages"](${bbox});way["shop"="beverages"](${bbox});node["shop"="wine"](${bbox});way["shop"="wine"](${bbox});`;
-    const query = `[out:json][timeout:25];( ${shopFilters} node["amenity"="bar"](${bbox});way["amenity"="bar"](${bbox}); ); out center 60;`;
+    if (!cityObj || !cityObj.center) {
+      const resp = await axios.get('https://nominatim.openstreetmap.org/search', { params:{ format:'json', q: city || 'Brasil', limit:1 }, signal: abortController.signal });
+      const geo = resp.data && resp.data[0];
+      if (geo) center = [parseFloat(geo.lat), parseFloat(geo.lon)];
+    }
 
-    const overRes = await fetch('https://overpass-api.de/api/interpreter', { method:'POST', body: 'data=' + encodeURIComponent(query), headers:{'Content-Type':'application/x-www-form-urlencoded'}, signal: abortController.signal });
-    if (!overRes.ok) throw new Error('Overpass falhou');
-    const data = await overRes.json();
+    if (center) window.map.setView(center, cityObj?.zoom || 12);
 
-    // remove marcadores antigos
     if (markersLayerGlobal) markersLayerGlobal.clearLayers();
     else markersLayerGlobal = L.layerGroup().addTo(window.map);
 
-    listaAdegas && (listaAdegas.innerHTML=''); feedEl && (feedEl.innerHTML='');
-    const bounds = [];
-    (data.elements||[]).slice(0,50).forEach((el,i)=>{
-      const elLat = el.lat || el.center?.lat; const elLon = el.lon || el.center?.lon; if(!elLat) return;
-      bounds.push([elLat,elLon]);
-      const tags = el.tags||{}; const nome = tags.name || tags.shop || tags.amenity || `Local ${i+1}`;
-      const emoji = tags.shop==='wine'?'🍷':(tags.amenity==='bar'?'🍺':'🍾');
-      const marker = L.marker([elLat,elLon], { icon: criarIconeSearch(emoji) }).addTo(markersLayerGlobal);
-      marker.bindPopup(`<strong>${nome}</strong><div style="margin-top:6px">${tags.operator||''}</div>`);
-      if (listaAdegas) listaAdegas.insertAdjacentHTML('beforeend', `<div class="p-3 border-b">${nome}</div>`);
-      if (feedEl) feedEl.insertAdjacentHTML('beforeend', `<div class="mb-2">${nome} • ${cidade}</div>`);
+    const results = [];
+
+    window.APP_DATA.places.filter(p=>p.city===cityObj.id).forEach(p=>{
+      const matches = !type || p.name.toLowerCase().includes(type) || p.type.toLowerCase().includes(type);
+      if(matches) results.push({ lat:p.lat, lng:p.lng, name:p.name, type:p.type, kind:'place', eventId:p.eventId });
     });
-    if (bounds.length>1) window.map.fitBounds(bounds, { padding:[40,40] });
-  }catch(err){ console.error(err); listaAdegas && (listaAdegas.innerHTML=`<div class="p-6">Erro: ${err.message}</div>`); }
-  finally{ if (btnBuscar) { btnBuscar.disabled=false; btnBuscar.textContent='Buscar'; } }
+
+    window.APP_DATA.events.filter(e=>e.city===cityObj.id).forEach(e=>{
+      const matches = !type || e.title.toLowerCase().includes(type) || (e.description || '').toLowerCase().includes(type);
+      if(matches) results.push({ lat: cityObj.center[0], lng: cityObj.center[1], name:e.title, type:'evento', kind:'event', event:e });
+    });
+
+    window.APP_DATA.frevos.filter(f=>f.city===cityObj.id).forEach(f=>{
+      const matches = !type || f.name.toLowerCase().includes(type) || (f.description || '').toLowerCase().includes(type) || (f.type || '').toLowerCase().includes(type);
+      if(matches) results.push({ lat:f.lat, lng:f.lng, name:f.name, type:f.type || 'frevo', kind:'frevo', frevo:f });
+    });
+
+    const bounds = [];
+    if (feedEl) feedEl.innerHTML = '';
+    if (detailsEl) detailsEl.innerHTML = results.length ? 'Resultados no mapa:' : 'Nenhum resultado encontrado.';
+
+    results.forEach((r)=>{
+      if (!r.lat || !r.lng) return;
+      bounds.push([r.lat, r.lng]);
+      const emoji = (r.kind==='frevo') ? '🎺' : (r.kind==='event' ? '🎟️' : '📍');
+      const marker = L.marker([r.lat, r.lng], { icon: criarIconeSearch(emoji) }).addTo(markersLayerGlobal);
+      let popup = `<strong>${r.name}</strong><div style="margin-top:6px">Tipo: ${r.type}</div>`;
+      if (r.event) {
+        popup += `<div style="margin-top:8px"><a href='${r.event.sympla}' target='_blank' rel='noopener'>Sympla</a> · <a href='${r.event.instagram}' target='_blank' rel='noopener'>Instagram</a></div>`;
+      }
+      if (r.frevo) {
+        popup += `<div style="margin-top:8px"><a href='${r.frevo.instagram || r.frevo.insta || '#'}' target='_blank' rel='noopener'>Instagram</a></div>`;
+      }
+      marker.bindPopup(popup);
+      marker.on('click', ()=>{
+        let detailHtml = `<strong>${r.name}</strong><div style="margin-top:6px">Tipo: ${r.type}</div>`;
+        if (r.event) detailHtml += `<div style="margin-top:8px"><a href='${r.event.sympla}' target='_blank' rel='noopener'>Sympla</a> · <a href='${r.event.instagram}' target='_blank' rel='noopener'>Instagram</a></div>`;
+        if (r.frevo) detailHtml += `<div style="margin-top:8px"><a href='${r.frevo.instagram || r.frevo.insta || '#'}' target='_blank' rel='noopener'>Instagram</a></div>`;
+        if (detailsEl) detailsEl.innerHTML = detailHtml;
+      });
+      if (feedEl) feedEl.insertAdjacentHTML('beforeend', `<div class="mb-2"><strong>${r.name}</strong><div style="font-size:12px;color:#ccc">${r.type}</div></div>`);
+    });
+
+    if(bounds.length>1) window.map.fitBounds(bounds, { padding:[40,40] });
+  }catch(err){ console.error(err); if(feedEl) feedEl.innerHTML = `<div style="color:#f99">Erro: ${err.message}</div>`; if(detailsEl) detailsEl.innerHTML = 'Não foi possível carregar os resultados.'; }
+  finally{ if (btnBuscar) { btnBuscar.disabled=false; btnBuscar.textContent='Buscar no mapa'; } }
 }
 
 window.buscar = buscar;

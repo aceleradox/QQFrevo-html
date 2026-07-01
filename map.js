@@ -10,17 +10,24 @@
   function initMap(){
     const first = window.APP_DATA.cities[0];
     map = L.map('map', {zoomControl:true}).setView(first.center, first.zoom);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© OpenStreetMap'}).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
     markersLayer = L.layerGroup().addTo(map);
+    // expõe referência do mapa globalmente para integrações simples
+    try{ window.map = map; }catch(e){}
     // ajustar tamanho quando o mapa for exibido
     setTimeout(()=>{ try{ map.invalidateSize(); }catch(e){} }, 300);
   }
 
   function clearMarkers(){ markersLayer.clearLayers(); }
 
-  function addMarkersForCity(cityId){
+  function addMarkersForCity(cityIdOrName){
     clearMarkers();
-    const places = window.APP_DATA.places.filter(p=>p.city===cityId);
+    const query = (cityIdOrName || '').toString().trim().toLowerCase();
+    const city = window.APP_DATA.cities.find(x=>x.id===query || x.name.toLowerCase()===query) || window.APP_DATA.cities.find(x=>x.name.toLowerCase().includes(query)) || window.APP_DATA.cities[0];
+    const places = window.APP_DATA.places.filter(p=>p.city===city.id);
     places.forEach(p=>{
       const evt = p.eventId ? window.APP_DATA.events.find(e=>e.id===p.eventId) : null;
       const marker = L.marker([p.lat,p.lng], {icon:createIcon(p.type)}).addTo(markersLayer);
@@ -38,8 +45,9 @@
     });
   }
 
-  function focusCity(cityId){
-    const c = window.APP_DATA.cities.find(x=>x.id===cityId) || window.APP_DATA.cities[0];
+  function focusCity(cityIdOrName){
+    const query = (cityIdOrName || '').toString().trim().toLowerCase();
+    const c = window.APP_DATA.cities.find(x=>x.id===query || x.name.toLowerCase()===query) || window.APP_DATA.cities.find(x=>x.name.toLowerCase().includes(query)) || window.APP_DATA.cities[0];
     map.setView(c.center, c.zoom);
     try{ map.invalidateSize(); }catch(e){}
   }

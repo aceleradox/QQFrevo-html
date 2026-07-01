@@ -15,7 +15,8 @@ window.APP_DATA = {
     { id: 'e2', city: 'rio', title: 'Baile Funk - Zona Sul', date: '2026-07-18', sympla: 'https://www.sympla.com.br/evento-exemplo-2', instagram: 'https://instagram.com/exemplo2', description: 'Pancadão com DJs convidados.' }
   ],
   frevos: [
-    { id: 'f1', city: 'recife', name: 'Orquestra do Frevo', description: 'Banda tradicional de frevo, contato via Instagram', insta: 'https://instagram.com/orquestrafrevo' }
+    { id: 'f1', city: 'recife', name: 'Orquestra do Frevo', type: 'frevo tradicional', lat:-8.058, lng:-34.878, description: 'Banda tradicional de frevo, contato via Instagram', instagram: 'https://instagram.com/orquestrafrevo' },
+    { id: 'f2', city: 'rio', name: 'Frevo Carioca', type: 'frevo carioca', lat:-22.912, lng:-43.175, description: 'Grupo de frevo com presença em eventos do Rio', instagram: 'https://instagram.com/frevocarioca' }
   ],
   reviewsSites: [
     { name: 'ResenhaBeat', url: 'https://resenhabeat.example' },
