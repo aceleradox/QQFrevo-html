@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QQFrevo — Enviar evento</title>
+  <style>body{font-family:Arial,Helvetica,sans-serif;padding:12px;background:#050014;color:#eee} .card{background:#0b0520;padding:12px;border-radius:8px}</style>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+  <h2>Enviar evento (POST simulada)</h2>
+  <div class="card">
+    <form id="evtForm">
+      <label>Título<br><input name="title" required style="width:100%;padding:8px;margin-top:6px;background:#071022;border:1px solid #222;color:#fff;border-radius:6px"/></label>
+      <label style="display:block;margin-top:8px">Cidade<br><select name="city" style="width:100%;padding:8px;margin-top:6px;border-radius:6px"></select></label>
+      <label style="display:block;margin-top:8px">Data<br><input name="date" type="date" style="padding:8px;margin-top:6px;border-radius:6px"/></label>
+      <label style="display:block;margin-top:8px">Sympla (URL)<br><input name="sympla" type="url" style="width:100%;padding:8px;margin-top:6px;border-radius:6px"/></label>
+      <label style="display:block;margin-top:8px">Instagram (URL)<br><input name="instagram" type="url" style="width:100%;padding:8px;margin-top:6px;border-radius:6px"/></label>
+      <label style="display:block;margin-top:8px">Descrição<br><textarea name="description" rows="4" style="width:100%;padding:8px;margin-top:6px;border-radius:6px"></textarea></label>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button type="submit" class="btn" style="background:#7c3aed;color:#fff;padding:8px 12px;border-radius:8px;border:none">Enviar</button>
+        <a href="index.html" style="color:#9aa">Voltar</a>
+      </div>
+    </form>
+    <div id="status" style="margin-top:10px"></div>
+  </div>
+  <script src="data.js"></script>
+  <script src="posts.js"></script>
+  <script>
+    const citySel = document.querySelector('select[name=city]');
+    (window.APP_DATA.cities||[]).forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; citySel.appendChild(o); });
+    document.getElementById('evtForm').addEventListener('submit', e=>{
+      e.preventDefault(); const fd = new FormData(e.target);
+      const payload = { title: fd.get('title'), city: fd.get('city'), date: fd.get('date'), sympla: fd.get('sympla'), instagram: fd.get('instagram'), description: fd.get('description') };
+      const item = window.QQPosts.submitPost(payload);
+      document.getElementById('status').textContent = 'Enviado — id: '+item.id;
+      e.target.reset();
+    });
+  </script>
+</body>
+</html>

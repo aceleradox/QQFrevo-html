@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QQFrevo — Lista de eventos</title>
+  <style>body{font-family:Arial,Helvetica,sans-serif;padding:12px;background:#050014;color:#eee} .card{background:#0b0520;padding:12px;border-radius:8px}</style>
+</head>
+<body>
+  <h2>Eventos publicados</h2>
+  <div class="card" id="list"></div>
+  <div style="margin-top:10px"><a href="index.html">Voltar</a></div>
+  <script src="posts.js"></script>
+  <script>
+    function render(){ const list = document.getElementById('list'); const posts = window.QQPosts.loadPosts(); if(!posts.length) list.innerHTML = '<div>Nenhum evento</div>'; else list.innerHTML = posts.map(p=>`<div style="padding:8px;border-bottom:1px solid #111"><strong>${p.title}</strong><div style="font-size:12px;color:#ccc">${p.city} · ${new Date(p.created).toLocaleString()}</div><div style="margin-top:6px">${p.description}</div></div>`).join(''); }
+    render();
+    window.addEventListener('qqf:posts-updated', render);
+  </script>
+</body>
+</html>
